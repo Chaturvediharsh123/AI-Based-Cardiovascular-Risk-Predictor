@@ -1,0 +1,6 @@
+*.pkl
+*.csv
+ECG Timeseries/
+Cardiac Failure/
+Heart Attack/
+.venv/
