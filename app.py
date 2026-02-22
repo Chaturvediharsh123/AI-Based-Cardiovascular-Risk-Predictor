@@ -1,100 +1,85 @@
-import streamlit as st
-import joblib
+try:
+    import gradio as gr
+except ImportError:
+    print("Installing gradio...")
+    import subprocess
+    subprocess.check_call(["pip", "install", "gradio"])
+    import gradio as gr
+
 import numpy as np
 import pandas as pd
+import joblib
 import tensorflow as tf
 
-
-# -------------------- PAGE CONFIG --------------------
-st.set_page_config(
-    page_title="Cardio Risk Analyzer",
-    layout="wide"
+# ---------------- LOAD MODELS ----------------
+ecg_model = tf.keras.models.load_model(
+    "timeseriesmodel.keras",
+    compile=False
 )
 
-st.title("🫀 Cardiovascular Risk Prediction System")
-st.write("AI-powered multi-model heart disease analysis")
+heart_model = joblib.load("model_xgb.pkl")
+diag_model = joblib.load("model_cardio.pkl")
 
-# -------------------- LOAD MODELS (CACHED) --------------------
-@st.cache_resource
-def load_models():
-    ecg_model = joblib.load("models/ecg_model.pkl")
-    heart_model = joblib.load("models/heart_attack_model.pkl")
-    diag_model = joblib.load("models/diagnosis_model.pkl")
-    return ecg_model, heart_model, diag_model
+# ---------------- PREDICTION FUNCTION ----------------
+def predict_risk(ecg_file, age, bp, chol, hr):
+    try:
+        # Read ECG
+        ecg_df = pd.read_csv(ecg_file.name)
+        ecg_data = ecg_df.values.flatten()
+        ecg_input = ecg_data.reshape(1, -1, 1)
 
-ecg_model, heart_model, diag_model = load_models()
+        # ECG prediction
+        ecg_prob = ecg_model.predict(ecg_input)[0][0]
 
-# -------------------- SIDEBAR INPUTS --------------------
-st.sidebar.header("Patient Details")
+        # Clinical prediction
+        clinical = np.array([[age, bp, chol, hr]])
+        heart_prob = heart_model.predict_proba(clinical)[0][1]
 
-age = st.sidebar.number_input("Age", 1, 120, 45)
-bp = st.sidebar.number_input("Blood Pressure", 80, 200, 120)
-chol = st.sidebar.number_input("Cholesterol", 100, 400, 180)
-hr = st.sidebar.number_input("Heart Rate", 40, 180, 75)
+        # Final risk
+        final_risk = (ecg_prob + heart_prob) / 2
 
-# -------------------- ECG INPUT --------------------
-st.header("📈 ECG Signal Input")
+        # Diagnosis model
+        diagnosis = diag_model.predict([[ecg_prob, heart_prob]])[0]
 
-ecg_file = st.file_uploader("Upload ECG CSV file", type=["csv"])
+        # Risk label
+        if final_risk < 0.3:
+            label = "✅ LOW RISK"
+        elif final_risk < 0.7:
+            label = "⚠️ MEDIUM RISK"
+        else:
+            label = "🚨 HIGH RISK"
 
-ecg_data = None
-if ecg_file is not None:
-    ecg_df = pd.read_csv(ecg_file)
-    st.subheader("ECG Signal Preview")
-    st.line_chart(ecg_df)
-    ecg_data = ecg_df.values.flatten()
+        return (
+            round(ecg_prob, 3),
+            round(heart_prob, 3),
+            round(final_risk, 3),
+            label,
+            diagnosis
+        )
 
-# -------------------- PREDICTION BUTTON --------------------
-if st.button("🔍 Analyze Heart Risk"):
+    except Exception as e:
+        return "Error", "Error", "Error", str(e), "Error"
 
-    if ecg_data is None:
-        st.error("Please upload ECG data")
-    else:
-        try:
-            # ---------- 1️⃣ ECG MODEL ----------
-            ecg_input = ecg_data.reshape(1, -1)
-            ecg_risk = ecg_model.predict(ecg_input)[0]
 
-            # ---------- 2️⃣ HEART ATTACK MODEL ----------
-            clinical_input = np.array([[age, bp, chol, hr]])
-            heart_prob = heart_model.predict_proba(clinical_input)[0][1]
+# ---------------- GRADIO UI ----------------
+interface = gr.Interface(
+    fn=predict_risk,
+    inputs=[
+        gr.File(label="Upload ECG CSV"),
+        gr.Number(label="Age", value=45),
+        gr.Number(label="Blood Pressure", value=120),
+        gr.Number(label="Cholesterol", value=180),
+        gr.Number(label="Heart Rate", value=75),
+    ],
+    outputs=[
+        gr.Textbox(label="ECG Risk Probability"),
+        gr.Textbox(label="Heart Attack Probability"),
+        gr.Textbox(label="Final Risk Score"),
+        gr.Textbox(label="Risk Level"),
+        gr.Textbox(label="Diagnosis Output"),
+    ],
+    title="🫀 Heart Risk Prediction (Gradio)",
+    description="Educational purpose only. Not a medical diagnosis."
+)
 
-            # ---------- 3️⃣ DIAGNOSIS MODEL ----------
-            diag_input = np.array([[ecg_risk, heart_prob]])
-            diagnosis = diag_model.predict(diag_input)[0]
-
-            # ---------- FINAL RISK LOGIC ----------
-            final_score = (0.5 * ecg_risk) + (0.5 * heart_prob)
-
-            if final_score < 0.3:
-                risk_label = "LOW RISK"
-                color = "green"
-            elif final_score < 0.7:
-                risk_label = "MEDIUM RISK"
-                color = "orange"
-            else:
-                risk_label = "HIGH RISK"
-                color = "red"
-
-            # -------------------- OUTPUT --------------------
-            st.header("📊 Prediction Results")
-
-            col1, col2, col3 = st.columns(3)
-
-            col1.metric("ECG Risk Score", f"{ecg_risk:.2f}")
-            col2.metric("Heart Attack Probability", f"{heart_prob*100:.2f}%")
-            col3.metric("Final Risk Score", f"{final_score*100:.2f}%")
-
-            st.subheader("🧠 Diagnosis Result")
-
-            if color == "green":
-                st.success(f"✅ {risk_label} – Healthy condition")
-            elif color == "orange":
-                st.warning(f"⚠️ {risk_label} – Medical monitoring advised")
-            else:
-                st.error(f"🚨 {risk_label} – Immediate medical attention required")
-
-            st.write(f"Diagnosis Model Output: **{diagnosis}**")
-
-        except Exception as e:
-            st.error(f"Error during prediction: {e}")
+interface.launch()
