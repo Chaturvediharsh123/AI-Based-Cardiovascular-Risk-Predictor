@@ -13,11 +13,11 @@ The system uses three trained models to analyze patient data and provide:
 
 ##  Features
 
-✔ Loads three trained ML models  
-✔ Predicts heart-related risks  
-✔ Clean and modular Python structure  
-✔ Easy to convert into FastAPI or Streamlit app  
-✔ Designed for academic and research purposes  
+ Loads three trained ML models  
+ Predicts heart-related risks  
+ Clean and modular Python structure  
+ Easy to convert into FastAPI or Streamlit app  
+ Designed for academic and research purposes  
 
 ---
 
@@ -39,7 +39,7 @@ cardio_project/
 ├── diagnosis_model.pkl
 └── README.md
 
-## 📦 Model Files
+##  Model Files
 
 Due to GitHub file size limitations, trained model files are not stored in this repository.
 
