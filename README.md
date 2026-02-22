@@ -39,7 +39,14 @@ cardio_project/
 ├── diagnosis_model.pkl
 └── README.md
 
+## 📦 Model Files
 
+Due to GitHub file size limitations, trained model files are not stored in this repository.
+
+Download models from:
+[[Google Drive Link](https://drive.google.com/drive/folders/1kydfwGtL260pxT10aV5hVUEs-NY135Vz?usp=drive_link)]
+
+Place the downloaded `.pkl` files in the project root directory before running the program.
 
 
 ## Installation
