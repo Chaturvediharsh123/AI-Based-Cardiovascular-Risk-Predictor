@@ -22,7 +22,6 @@ st.markdown("""
     /* Hide default Streamlit elements for a clean dashboard look */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
-    header {visibility: hidden;}
     
     .block-container {
         padding-top: 1rem;
@@ -32,15 +31,25 @@ st.markdown("""
     
     /* Global App Background */
     [data-testid="stAppViewContainer"] {
-        background: radial-gradient(circle at top left, #0f172a, #020617);
+        background: linear-gradient(135deg, #0f172a 0%, #020617 100%);
         color: #e2e8f0;
         font-family: 'Inter', sans-serif;
     }
     
+    /* Main content visible */
+    [data-testid="stMain"] {
+        color: #e2e8f0;
+    }
+    
+    
     [data-testid="stSidebar"] {
-        background-color: rgba(15, 23, 42, 0.8);
+        background-color: rgba(15, 23, 42, 0.95);
         border-right: 1px solid rgba(255,255,255,0.05);
-        backdrop-filter: blur(10px);
+    }
+
+    /* Ensure text is visible */
+    .stMarkdown, .stPlotlyChart, .stMetric {
+        color: #e2e8f0;
     }
 
     /* Glassmorphism Metric Cards */
